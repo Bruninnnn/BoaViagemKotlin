@@ -1,6 +1,5 @@
 package com.example.login.screens
 
-import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -22,40 +21,56 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.login.R
-import com.example.login.model.Viagem
+import com.example.login.database.AppDatabase
+import com.example.login.entities.Viagem
+import com.example.login.viewmodel.ViagemViewModel
+import com.example.login.viewmodel.ViagemViewModelFactory
+import java.time.format.DateTimeFormatter
 
+@Composable
+fun dest() {
+
+}
 
 private fun isSelected(currentDestination: NavDestination?, route: String): Boolean {
     return currentDestination?.hierarchy?.any { it.route == route } == true
 }
 
 @Composable
-fun Viagem(navController: NavController) {
+fun Viagem() {
 
-    val list = listOf(
-        Viagem(1, "Lazer", "Paris", "05/07/2024", "05/08/2024", 50000.0),
-        Viagem(2, "Negócio", "São Paulo", "05/06/2024", "09/06/2024", 3000.0),
-        Viagem(3, "Lazer", "Texas", "09/12/2024", "23/12/2024", 18000.0),
-        Viagem(4, "Negócio", "Washington", "10/02/2025", "20/02/2025", 8000.0),
-    )
     val ctx = LocalContext.current
+    val db = AppDatabase.getDatabase(ctx)
+
+    val viagemViewModel: ViagemViewModel = viewModel(
+        factory = ViagemViewModelFactory(db)
+    )
+
+    val navController = rememberNavController()
+
+    val viagensItems = viagemViewModel.getAll().collectAsState(initial = emptyList())
+
 
     Scaffold(
         floatingActionButton = {
-            val navBackStackEntry = navController.currentBackStackEntryAsState()
-            val currentDestination = navBackStackEntry.value?.destination
+
             FloatingActionButton(onClick = {
-                navController.navigate("formulario")
+                navController.navigate("formulario/${-1L}")
             }) {
                 Icon(
                     imageVector = Icons.Default.Add,
@@ -64,10 +79,44 @@ fun Viagem(navController: NavController) {
             }
         }
     ) {
+
+
         Column(modifier = Modifier.padding(it)) {
+
+            NavHost(
+                navController = navController,
+                startDestination = "dest"
+            ) {
+
+                composable("dest") {
+                    dest()
+                }
+
+                composable("formulario/{viagemId}", arguments = listOf(navArgument("viagemId") {
+                    type = NavType.LongType; defaultValue = -1L
+                })) { entry ->
+                    entry.arguments?.getLong("viagemId").let {
+                        it
+                        Formulario(
+                            onBack = { navController.navigateUp() }, it
+                        )
+                    }
+                }
+            }
+
             LazyColumn() {
-                items(items = list) {
-                    ViagemCard(it)
+
+                items(items = viagensItems.value) {
+                    ViagemCard(
+                        p = it,
+                        onDelet = {
+                            viagemViewModel.delet(it)
+                        },
+                        onEdit = {
+                            navController.navigate("formulario/${it.id}")
+                        }
+                    )
+
 
                 }
             }
@@ -78,40 +127,47 @@ fun Viagem(navController: NavController) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ViagemCard(p: Viagem) {
+fun ViagemCard(p: Viagem, onDelet: () -> Unit, onEdit: () -> Unit) {
+
     val ctx = LocalContext.current
+
     Card(elevation = CardDefaults.cardElevation(
         defaultElevation = 7.dp
     ),
-        border = BorderStroke(1.dp, Color.Companion.Black),
+        border = BorderStroke(1.dp, Color.Black),
         modifier = Modifier
             .padding(4.dp)
             .fillMaxWidth()
             .combinedClickable(
                 onClick = {
-                    Toast
-                        .makeText(
-                            ctx,
-                            "Viagem: ${p.destino}",
-                            Toast.LENGTH_SHORT
-                        )
-                        .show()
+
+                    onEdit()
+//                        Toast
+//                            .makeText(
+//                                ctx,
+//                                "Viagem: ${p.destino}",
+//                                Toast.LENGTH_SHORT
+//                            )
+//                            .show()
                 },
                 onLongClick = {
-                    Toast
-                        .makeText(
-                            ctx,
-                            "Viagem: ${p.destino}",
-                            Toast.LENGTH_SHORT
-                        )
-                        .show()
+
+                    onDelet()
+
+//                        Toast
+//                            .makeText(
+//                                ctx,
+//                                "Viagem: ${p.destino}",
+//                                Toast.LENGTH_SHORT
+//                            )
+//                            .show()
                 }
             )
     ) {
 
         Column(modifier = Modifier.padding(5.dp)) {
             Row {
-                if (p.tipo == "Lazer")
+                if (p.tipo == 0)
                     Image(
                         painter = painterResource(id = R.drawable.lazer),
                         contentDescription = "imagem lazer",
@@ -125,21 +181,25 @@ fun ViagemCard(p: Viagem) {
                         modifier = Modifier
                             .size(100.dp)
                     )
+
+
+                var formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy")
+
                 Column(modifier = Modifier.padding(5.dp)) {
                     Text(
                         text = p.destino,
                         style = MaterialTheme.typography.titleLarge
                     )
                     Text(
-                        text = p.dataInicio,
+                        text = p.dataIni.format(formatter),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
-                        text = p.dataFinal,
+                        text = p.dataFim.format(formatter),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
-                        text = "R$ ${p.orcamento}",
+                        text = p.orcamento.toString(),
                         style = MaterialTheme.typography.bodyMedium
                     )
 

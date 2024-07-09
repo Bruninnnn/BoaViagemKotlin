@@ -6,22 +6,22 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.login.components.MyTopBar
 import com.example.login.screens.Login
 import com.example.login.screens.Menu
 import com.example.login.screens.Registro
-import com.example.login.screens.toast
 import com.example.login.ui.theme.LoginTheme
 
 class MainActivity : ComponentActivity() {
@@ -45,15 +45,17 @@ fun isSelected(currentDestination: NavDestination?, route: String): Boolean {
     return currentDestination?.hierarchy?.any { it.route == route } == true
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BoaViagem() {
 
     val navController = rememberNavController()
 
     Scaffold(
-
+        topBar = {
+            MyTopBar()
+        }
     ) {
-
         Column(modifier = Modifier.padding(it)) {
 
             NavHost(navController = navController, startDestination = "login") {
@@ -73,6 +75,8 @@ fun BoaViagem() {
                         navController.navigate("login")
                     })
                 }
+
+
             }
         }
     }
@@ -86,25 +90,3 @@ fun BoaViagemPreview() {
         BoaViagem()
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

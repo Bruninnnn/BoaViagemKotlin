@@ -18,6 +18,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -32,36 +33,39 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.compose.rememberNavController
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.login.R
-
+import com.example.login.database.AppDatabase
+import com.example.login.viewmodel.UsuarioViewModel
+import com.example.login.viewmodel.UsuarioViewModelFactory
 
 @Composable
 fun Login(
     onLogin: () -> Unit,
-    onRegistro: () -> Unit
+    onRegistro: () -> Unit,
 ) {
     val context = LocalContext.current
 
-    val usuario = remember {
-        mutableStateOf("")
-    }
+    val senhaVisivel = remember { mutableStateOf(false) }
+    val user = remember { mutableStateOf("") }
+    val senha = remember { mutableStateOf("") }
 
-    val senha = remember {
-        mutableStateOf("")
-    }
+    val ctx = LocalContext.current
+    val db = AppDatabase.getDatabase(ctx)
 
-    val senhaVisivel = remember {
-        mutableStateOf(false)
-    }
+    val usuarioViewModel: UsuarioViewModel = viewModel(
+        factory = UsuarioViewModelFactory(db)
+    )
+
+    val userState = usuarioViewModel.getUserByCredentials(user.value, senha.value)
+        .collectAsState(initial = null)
 
     Column(modifier = Modifier.fillMaxSize()) {
         Image(
             painter = painterResource(id = R.drawable.login),
-            contentDescription = "login img",
+            contentDescription = "imagem login",
             modifier = Modifier
-                .size(360.dp)
-                .fillMaxWidth()
+                .size(250.dp)
                 .align(Alignment.CenterHorizontally)
         )
 
@@ -82,11 +86,9 @@ fun Login(
         )
 
         OutlinedTextField(
-            value = usuario.value,
-            onValueChange = { usuario.value = it },
-            label = {
-                Text(text = "Usuário")
-            },
+            value = user.value,
+            onValueChange = { user.value = it },
+            label = { Text(text = "Usuário") },
             modifier = Modifier
                 .padding(8.dp)
                 .fillMaxWidth()
@@ -101,33 +103,20 @@ fun Login(
         OutlinedTextField(
             value = senha.value,
             onValueChange = { senha.value = it },
-            label = {
-                Text(text = "Senha")
-            },
+            label = { Text(text = "Senha") },
             modifier = Modifier
                 .padding(8.dp)
                 .fillMaxWidth(),
-
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Password
             ),
-            visualTransformation =
-            if (senhaVisivel.value)
-                VisualTransformation.None
-            else
-                PasswordVisualTransformation(),
+            visualTransformation = if (senhaVisivel.value) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = {
-                IconButton(onClick = {
-                    senhaVisivel.value = !senhaVisivel.value
-                }) {
+                IconButton(onClick = { senhaVisivel.value = !senhaVisivel.value }) {
                     if (senhaVisivel.value)
-                        Icon(
-                            painterResource(id = R.drawable.visivel), ""
-                        )
+                        Icon(painterResource(id = R.drawable.visivel), contentDescription = "")
                     else
-                        Icon(
-                            painterResource(id = R.drawable.olho), ""
-                        )
+                        Icon(painterResource(id = R.drawable.olho), contentDescription = "")
                 }
             }
         )
@@ -139,14 +128,14 @@ fun Login(
         ) {
             Button(
                 onClick = {
-                    if (usuario.value == "admin" && senha.value == "admin") {
+                    val usuario = userState.value
+                    if (usuario != null) {
                         onLogin()
                     } else {
-                        context.toast("Usuário ou senha incorretos. Tente novamente!")
+                        context.toast("Usuário ou senha incorreto")
                     }
                 },
-                modifier = Modifier
-                    .padding(top = 20.dp)
+                modifier = Modifier.padding(top = 20.dp)
             ) {
                 Text(
                     text = "Entrar",
@@ -162,8 +151,7 @@ fun Login(
         ) {
             Button(
                 onClick = { onRegistro() },
-                modifier = Modifier
-                    .padding(top = 20.dp)
+                modifier = Modifier.padding(top = 20.dp)
             ) {
                 Text(text = "Novo Usuário")
             }
@@ -173,7 +161,6 @@ fun Login(
 
 fun Context.toast(message: CharSequence) =
     Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-
 
 @Preview(showBackground = true)
 @Composable
